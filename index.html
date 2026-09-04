@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบสต็อก & ตรวจสอบ RTC</title>
+  <title>ระบบสต็อก & วันหมดอายุสินค้า (RTC)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -13,54 +13,59 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
+  <!-- Modal ป้องกันด้วยรหัสผ่าน 254903 -->
   <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-sm w-full text-center">
       <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-        <i class="fa-solid fa-lock"></i>
+        <i class="fa-solid fa-key"></i>
       </div>
-      <h2 class="text-2xl font-bold text-slate-800 mb-2">ยืนยันตัวตน</h2>
-      <p class="text-sm text-slate-500 mb-6">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งานระบบสต็อก</p>
+      <h2 class="text-2xl font-bold text-slate-800 mb-2">เข้าสู่ระบบสต็อก</h2>
+      <p class="text-sm text-slate-500 mb-6">กรุณากรอกรหัสผ่านเพื่อใช้งานระบบ</p>
       
-      <input type="password" id="pinInput" placeholder="กรอกรหัสผ่าน 6 หลัก" maxlength="6"
+      <input type="password" id="pinInput" placeholder="กรอกรหัสผ่าน" maxlength="6"
         class="w-full text-center text-2xl tracking-widest font-mono border-2 border-slate-200 rounded-xl py-3 mb-4 focus:outline-none focus:border-blue-500 transition">
       
       <p id="pinError" class="text-red-500 text-xs mb-4 hidden">รหัสผ่านไม่ถูกต้อง!</p>
 
       <button onclick="checkPin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl shadow-lg shadow-blue-500/30 transition duration-200">
-        เข้าสู่ระบบ
+        ตกลง
       </button>
     </div>
   </div>
 
-  <div class="max-w-4xl mx-auto p-4 sm:p-6">
+  <!-- หน้าจอหลัก -->
+  <div class="max-w-3xl mx-auto p-4 sm:p-6">
     
-    <header class="bg-white rounded-2xl p-6 shadow-sm mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <!-- ส่วนหัวข้อ -->
+    <header class="bg-white rounded-2xl p-6 shadow-sm mb-6 flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <div class="bg-indigo-600 text-white p-3 rounded-xl shadow-md">
+        <div class="bg-blue-600 text-white p-3 rounded-xl shadow-md">
           <i class="fa-solid fa-boxes-stacked text-xl"></i>
         </div>
         <div>
           <h1 class="text-xl font-bold text-slate-800">ระบบจัดการสต็อก & วันหมดอายุ</h1>
-          <p class="text-xs text-slate-500">ระบบคำนวณป้าย RTC อัตโนมัติ</p>
+          <p class="text-xs text-slate-500">ตรวจสอบและแจ้งเตือนติดป้าย RTC</p>
         </div>
       </div>
       <button onclick="lockSystem()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition">
-        <i class="fa-solid fa-right-from-bracket mr-1"></i> ล็อคระบบ
+        <i class="fa-solid fa-lock mr-1"></i> ล็อคระบบ
       </button>
     </header>
 
-    <div class="flex bg-slate-200/80 p-1.5 rounded-xl mb-6 gap-2">
+    <!-- แท็บสลับหน้า -->
+    <div class="flex bg-slate-200/80 p-1 rounded-xl mb-6 gap-2">
       <button id="tab1Btn" onclick="switchTab(1)" class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition bg-white text-blue-600 shadow-sm">
         <i class="fa-solid fa-plus-circle mr-1"></i> 1. เพิ่มสินค้าเข้าสต็อก
       </button>
       <button id="tab2Btn" onclick="switchTab(2)" class="flex-1 py-2.5 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900">
-        <i class="fa-solid fa-calendar-check mr-1"></i> 2. บันทึกวันหมดอายุ & RTC
+        <i class="fa-solid fa-clock-rotate-left mr-1"></i> 2. เช็ควันหมดอายุ (RTC)
       </button>
     </div>
 
+    <!-- ระบบที่ 1: เพิ่มของเข้าสต็อก -->
     <div id="tab1" class="bg-white rounded-2xl p-6 shadow-sm">
       <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <i class="fa-solid fa-barcode text-blue-600"></i> เพิ่มข้อมูลสินค้าลงสต็อก
+        <i class="fa-solid fa-barcode text-blue-600"></i> เพิ่มสินค้าใหม่ / อัปเดตสต็อก
       </h2>
       <form id="stockForm" onsubmit="handleSaveStock(event)" class="space-y-4">
         <div>
@@ -85,39 +90,37 @@
       </form>
     </div>
 
+    <!-- ระบบที่ 2: เช็ควันหมดอายุ และคำนวณ RTC -->
     <div id="tab2" class="bg-white rounded-2xl p-6 shadow-sm hidden">
       <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-        <i class="fa-solid fa-clock text-amber-500"></i> ตรวจสอบวันหมดอายุ & ติดป้าย RTC
+        <i class="fa-solid fa-calendar-day text-amber-500"></i> บันทึกวันหมดอายุสินค้า
       </h2>
       
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">สแกน/กรอก รหัสบาร์โค้ด</label>
-          <div class="flex gap-2">
-            <input type="text" id="searchBarcode" placeholder="กรอกรหัสบาร์โค้ด เช่น 098" oninput="lookupProduct()"
-              class="flex-1 border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:border-blue-500">
-            <button onclick="lookupProduct()" class="bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition">
-              <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-          </div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">กรอก/สแกน รหัสบาร์โค้ด</label>
+          <input type="text" id="searchBarcode" placeholder="พิมพ์รหัส เช่น 098" oninput="lookupProduct()"
+            class="w-full border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:border-blue-500">
         </div>
 
-        <div id="productPreview" class="bg-slate-50 border border-slate-200 rounded-xl p-4 hidden">
-          <p class="text-xs text-slate-400">ข้อมูลสินค้าที่พบ:</p>
+        <!-- การ์ดแสดงข้อมูลสินค้าที่ดึงมา -->
+        <div id="productPreview" class="bg-blue-50 border border-blue-200 rounded-xl p-4 hidden">
+          <p class="text-xs text-blue-500 font-medium">พบข้อมูลสินค้าในสต็อก:</p>
           <div class="flex justify-between items-center mt-1">
-            <span id="previewName" class="text-base font-bold text-slate-800">-</span>
-            <span id="previewPrice" class="text-sm font-semibold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg">-</span>
+            <span id="previewName" class="text-lg font-bold text-slate-800">-</span>
+            <span id="previewPrice" class="text-sm font-semibold bg-blue-200 text-blue-800 px-3 py-1 rounded-lg">-</span>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">ระบุวันหมดอายุของสินค้า</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">ระบุวันหมดอายุสินค้า</label>
           <input type="date" id="expiryDate" onchange="calculateRTC()"
             class="w-full border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:border-blue-500">
         </div>
 
+        <!-- ผลการแจ้งเตือน RTC -->
         <div id="rtcCard" class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hidden">
-          <p class="text-xs text-slate-500 mb-1">ผลการคำนวณสถานะ RTC</p>
+          <p class="text-xs text-slate-500 mb-1">สถานะการแจ้งเตือน</p>
           <div id="rtcBadge" class="inline-block px-4 py-2 rounded-full font-bold text-lg my-1">
             -
           </div>
@@ -126,20 +129,22 @@
 
         <button onclick="handleSaveExpiry()" id="saveExpiryBtn" disabled
           class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-semibold py-3 rounded-xl shadow-md transition">
-          บันทึกข้อมูลวันหมดอายุ
+          บันทึกวันหมดอายุ
         </button>
       </div>
     </div>
 
   </div>
 
+  <!-- การแจ้งเตือน Toast -->
   <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 transition-opacity duration-300 opacity-0 pointer-events-none z-50">
     <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
-    <span id="toastMsg" class="text-sm">ข้อความแจ้งเตือน</span>
+    <span id="toastMsg" class="text-sm">การแจ้งเตือน</span>
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbypdurBcrDX32e8PGey3QW0JKcuFZH_ynvkIERJJlHMgKoC8IbpU2C24rMpDjeVDbpI/exec";
+    // URL Google Apps Script ล่าสุดของคุณ
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwORB8OkIlda7BYvP-7ZgxWe07O1mcAalGx54ZzQJgkVc1o3QBPymKOTHj70fTQAVnE/exec";
     
     const CORRECT_PIN = "254903";
     let stockDatabase = {};
@@ -184,17 +189,17 @@
     }
 
     async function loadStockData() {
-      showToast("กำลังดึงข้อมูลสต็อก...", "info");
+      showToast("กำลังเชื่อมต่อฐานข้อมูล...", "info");
       try {
         const res = await fetch(`${GAS_API_URL}?action=getStock`);
         const json = await res.json();
         if (json.status === "success") {
           stockDatabase = json.data;
-          showToast("เชื่อมต่อฐานข้อมูลสำเร็จ!");
-          lookupProduct(); // Re-check barcode after fetching stock
+          showToast("โหลดข้อมูลสำเร็จ!");
+          lookupProduct();
         }
       } catch (err) {
-        showToast("ไม่สามารถดึงข้อมูลสต็อกได้ กรุณาตรวจสอบการตั้งค่า Deploy", "error");
+        showToast("ไม่สามารถดึงข้อมูลสต็อกได้", "error");
       }
     }
 
@@ -259,7 +264,6 @@
       const today = new Date();
       today.setHours(0,0,0,0);
 
-      // Handle Year Parse (Fix BE/AD)
       let expDate = new Date(expInput);
       if (expDate.getFullYear() > 2500) {
         expDate.setFullYear(expDate.getFullYear() - 543);
@@ -273,21 +277,21 @@
       rtcCard.classList.remove("hidden");
 
       if (diffDays <= 0) {
-        currentRTC = "หมดอายุแล้ว (Expired)";
+        currentRTC = "สินค้าหมดอายุ";
         rtcBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-lg bg-red-100 text-red-700 border border-red-300";
-        rtcBadge.innerText = "🛑 สินค้าหมดอายุแล้ว!";
+        rtcBadge.innerText = "🛑 หมดอายุแล้ว";
       } else if (diffDays <= 15) {
         currentRTC = "ติด RTC 50%";
         rtcBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-lg bg-orange-100 text-orange-700 border border-orange-300";
-        rtcBadge.innerText = "🏷️ ติดป้าย RTC 50%";
+        rtcBadge.innerText = "🏷️ แจ้งเตือน: ติดป้าย RTC 50%";
       } else if (diffDays <= 30) {
         currentRTC = "ติด RTC 30%";
         rtcBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-lg bg-amber-100 text-amber-700 border border-amber-300";
-        rtcBadge.innerText = "🏷️ ติดป้าย RTC 30%";
+        rtcBadge.innerText = "🏷️ แจ้งเตือน: ติดป้าย RTC 30%";
       } else {
-        currentRTC = "ปกติ (ยังไม่ถึงช่วง RTC)";
+        currentRTC = "ปกติ";
         rtcBadge.className = "inline-block px-4 py-2 rounded-full font-bold text-lg bg-emerald-100 text-emerald-700 border border-emerald-300";
-        rtcBadge.innerText = "✅ สถานะปกติ";
+        rtcBadge.innerText = "✅ สถานะปกติ (ยังไม่ถึงช่วง RTC)";
       }
 
       daysText.innerText = `เหลือเวลาอีก ${diffDays} วัน จะถึงวันหมดอายุ`;
@@ -314,7 +318,7 @@
         const json = await res.json();
 
         if (json.status === "success") {
-          showToast("บันทึกข้อมูล RTC สำเร็จ!");
+          showToast("บันทึกวันหมดอายุเรียบร้อย!");
           document.getElementById("searchBarcode").value = "";
           document.getElementById("expiryDate").value = "";
           document.getElementById("productPreview").classList.add("hidden");
@@ -323,7 +327,7 @@
       } catch (err) {
         showToast("เกิดข้อผิดพลาดในการบันทึก", "error");
       } finally {
-        btn.innerText = "บันทึกข้อมูลวันหมดอายุ";
+        btn.innerText = "บันทึกวันหมดอายุ";
         btn.disabled = false;
       }
     }
