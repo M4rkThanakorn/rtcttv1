@@ -3,316 +3,284 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบจัดการสต็อก & วันหมดอายุ (RTC)</title>
+  <title>RTC & Inventory Management System</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
-    body { font-family: 'Kanit', sans-serif; }
+    body { font-family: 'Prompt', sans-serif; }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
 
-  <!-- Header -->
-  <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
-    <div class="max-w-md mx-auto px-4 py-3 text-center">
-      <h1 class="text-xl font-bold"><i class="fa-solid fa-boxes-stacked mr-2"></i>ระบบสต็อก & Expiry RTC</h1>
-    </div>
-  </header>
+  <div class="max-w-4xl mx-auto w-full p-4 md:p-6 pb-24">
+    
+    <header class="flex justify-between items-center mb-6 bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50 backdrop-blur">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+          <i class="fa-solid fa-boxes-packing mr-2 text-indigo-400"></i>RTC & Stock Hub
+        </h1>
+        <p class="text-xs text-slate-400">ระบบจัดการสต็อกและคำนวณส่วนลดตามวันหมดอายุ</p>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>ออนไลน์
+        </span>
+      </div>
+    </header>
 
-  <div class="max-w-md mx-auto p-4 pb-24">
-
-    <!-- TAB 1: เพิ่มสินค้า -->
-    <section id="tab1" class="tab-content">
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-        <h2 class="text-lg font-semibold text-slate-700 border-b pb-2 mb-4"><i class="fa-solid fa-plus-circle text-indigo-600 mr-2"></i>1. เพิ่มสินค้าเข้าสต็อก</h2>
-        
-        <!-- ล็อครหัสผ่าน -->
-        <div id="authBox" class="space-y-4">
-          <p class="text-sm text-slate-500">กรุณาใส่รหัสผ่านเพื่อเข้าใช้งานระบบนี้</p>
-          <input type="password" id="sysPassword" placeholder="ใส่รหัสผ่าน 6 หลัก" class="w-full border rounded-xl p-3 text-center text-lg tracking-widest focus:ring-2 focus:ring-indigo-500 outline-none">
-          <button onclick="checkPassword()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition">ยืนยันรหัสผ่าน</button>
+    <section id="tab-add-stock" class="tab-content hidden space-y-4">
+      <div id="authOverlay" class="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-center max-w-md mx-auto my-8 shadow-2xl">
+        <div class="w-16 h-16 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+          <i class="fa-solid fa-lock"></i>
         </div>
+        <h2 class="text-lg font-bold mb-2">ยืนยันตัวตนก่อนเข้าใช้งาน</h2>
+        <p class="text-xs text-slate-400 mb-4">เฉพาะระบบเพิ่มสินค้าเข้าสต็อกที่ต้องใช้ PIN</p>
+        <input type="password" id="pinInput" placeholder="กรอก PIN 6 หลัก" maxlength="6" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-center text-xl font-mono text-white mb-4 tracking-widest focus:outline-none focus:border-indigo-500">
+        <button onclick="verifyPin()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition">เข้าสู่ระบบ</button>
+      </div>
 
-        <!-- ฟอร์มเพิ่มสินค้า (ซ่อนไว้ก่อน) -->
-        <div id="stockForm" class="hidden space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">รหัสบาร์โค้ด</label>
-            <input type="text" id="addBarcode" placeholder="เช่น 098" class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">ชื่อสินค้า</label>
-            <input type="text" id="addName" placeholder="เช่น ขนมปัง" class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">ราคา (บาท)</label>
-            <input type="number" id="addPrice" placeholder="เช่น 20" class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
-          </div>
-          <button onclick="saveProduct()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl transition shadow-md">บันทึกเข้าสต็อก</button>
+      <div id="addStockForm" class="hidden bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+          <h2 class="font-bold text-lg text-indigo-400"><i class="fa-solid fa-plus-circle mr-2"></i>เพิ่มสินค้าใหม่เข้าสต็อก</h2>
+          <span class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full"><i class="fa-solid fa-check-circle mr-1"></i>ปลดล็อกแล้ว</span>
         </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">รหัสบาร์โค้ดสินค้า (รองรับ 0 นำหน้า)</label>
+          <input type="text" id="stockBarcode" placeholder="เช่น 098" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">ชื่อสินค้า</label>
+          <input type="text" id="stockName" placeholder="เช่น ขนมปัง" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">ราคา/รายละเอียด</label>
+          <input type="text" id="stockPrice" placeholder="เช่น 20บาท" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+        <button onclick="saveStock()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-600/30">
+          <i class="fa-solid fa-save mr-2"></i>บันทึกข้อมูลเข้าสต็อก
+        </button>
       </div>
     </section>
 
-    <!-- TAB 2: ทำวันหมดอายุ -->
-    <section id="tab2" class="tab-content hidden">
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-        <h2 class="text-lg font-semibold text-slate-700 border-b pb-2"><i class="fa-solid fa-barcode text-indigo-600 mr-2"></i>2. บันทึกวันหมดอายุ & RTC</h2>
+    <section id="tab-add-exp" class="tab-content hidden space-y-4">
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-4">
+        <h2 class="font-bold text-lg text-cyan-400 border-b border-slate-700 pb-3">
+          <i class="fa-solid fa-calendar-plus mr-2"></i>ตั้งค่าวันหมดอายุ & RTC
+        </h2>
         
         <div>
-          <label class="block text-sm font-medium mb-1">พิมพ์/สแกน บาร์โค้ด</label>
+          <label class="text-xs text-slate-400 mb-1 block">สแกน/พิมพ์ รหัสบาร์โค้ด</label>
           <div class="flex gap-2">
-            <input type="text" id="searchBarcode" placeholder="กรอกรหัส เช่น 098" class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
-            <button onclick="fetchProduct()" class="bg-indigo-600 text-white px-4 rounded-xl font-medium hover:bg-indigo-700">ดึงข้อมูล</button>
+            <input type="text" id="expBarcode" placeholder="เช่น 098" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono focus:outline-none focus:border-cyan-500">
+            <button onclick="fetchProductInfo()" class="px-5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition whitespace-nowrap">
+              <i class="fa-solid fa-search mr-1"></i>ดึงข้อมูล
+            </button>
           </div>
         </div>
 
-        <!-- รายละเอียดสินค้าที่ดึงมา -->
-        <div id="productDetail" class="hidden bg-slate-50 p-4 rounded-xl border space-y-2">
-          <p class="text-sm text-slate-500">ข้อมูลสินค้า:</p>
-          <p class="font-bold text-slate-800 text-lg" id="fetchedName">-</p>
-          <p class="text-indigo-600 font-semibold" id="fetchedPrice">-</p>
+        <div id="productPreview" class="hidden p-4 bg-slate-900/80 rounded-xl border border-cyan-500/30 space-y-1">
+          <div class="text-xs text-cyan-400 font-semibold">พบข้อมูลสินค้า:</div>
+          <div id="previewName" class="text-lg font-bold text-white"></div>
+          <div id="previewPrice" class="text-sm text-slate-400"></div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-1">ระบุวันหมดอายุ</label>
-          <input type="date" id="expDateInput" onchange="calculateRTC()" class="w-full border rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <label class="text-xs text-slate-400 mb-1 block">วันหมดอายุของสินค้า (EXP Date)</label>
+          <input type="date" id="expDateInput" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-cyan-500">
         </div>
 
-        <!-- แสดงการคาดการณ์ RTC -->
-        <div id="rtcPreview" class="hidden p-3 rounded-xl text-center font-bold text-sm"></div>
-
-        <button onclick="saveExpiry()" id="btnSaveExpiry" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl transition shadow-md opacity-50 cursor-not-allowed" disabled>บันทึกวันหมดอายุ</button>
+        <button onclick="saveExpiry()" class="w-full py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition shadow-lg shadow-cyan-600/30">
+          <i class="fa-solid fa-clock-history mr-2"></i>บันทึกวันหมดอายุ
+        </button>
       </div>
     </section>
 
-    <!-- TAB 3: ดูรายการทั้งหมด -->
-    <section id="tab3" class="tab-content hidden">
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h2 class="text-lg font-semibold text-slate-700"><i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>3. รายการวันหมดอายุทั้งหมด</h2>
-          <button onclick="loadExpiries()" class="text-sm text-indigo-600 font-medium"><i class="fa-solid fa-rotate-right mr-1"></i>รีเฟรช</button>
-        </div>
+    <section id="tab-view-exp" class="tab-content space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="font-bold text-lg text-slate-200"><i class="fa-solid fa-list-check mr-2 text-amber-400"></i>รายการสินค้า RTC และวันหมดอายุ</h2>
+        <button onclick="loadExpiryItems()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg border border-slate-700 transition">
+          <i class="fa-solid fa-rotate mr-1"></i>รีเฟรช
+        </button>
+      </div>
 
-        <div id="expiryList" class="space-y-3">
-          <p class="text-center text-slate-400 py-4">กำลังโหลดข้อมูล...</p>
-        </div>
+      <div id="expiryList" class="space-y-3">
+        <div class="text-center py-12 text-slate-500">กำลังโหลดข้อมูล...</div>
       </div>
     </section>
 
   </div>
 
-  <!-- Bottom Navigation Menu (สำหรับมือถือ) -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg">
-    <div class="max-w-md mx-auto flex justify-around py-2">
-      <button onclick="switchTab('tab1')" id="nav-tab1" class="flex flex-col items-center text-indigo-600 font-medium text-xs">
-        <i class="fa-solid fa-box-archive text-lg mb-1"></i>
-        <span>เพิ่มสินค้า</span>
+  <nav class="fixed bottom-0 inset-x-0 bg-slate-800/90 backdrop-blur-lg border-t border-slate-700/80 z-40">
+    <div class="max-w-md mx-auto flex justify-around p-2">
+      <button onclick="switchTab('tab-view-exp')" id="nav-tab-view-exp" class="nav-btn flex-1 py-2 flex flex-col items-center text-xs text-indigo-400 font-semibold">
+        <i class="fa-solid fa-chart-pie text-lg mb-0.5"></i>
+        <span>ดู RTC ทั้งหมด</span>
       </button>
-      <button onclick="switchTab('tab2')" id="nav-tab2" class="flex flex-col items-center text-slate-400 font-medium text-xs">
-        <i class="fa-solid fa-calendar-plus text-lg mb-1"></i>
+      <button onclick="switchTab('tab-add-exp')" id="nav-tab-add-exp" class="nav-btn flex-1 py-2 flex flex-col items-center text-xs text-slate-400 hover:text-slate-200">
+        <i class="fa-solid fa-barcode text-lg mb-0.5"></i>
         <span>ทำวันหมดอายุ</span>
       </button>
-      <button onclick="switchTab('tab3')" id="nav-tab3" class="flex flex-col items-center text-slate-400 font-medium text-xs">
-        <i class="fa-solid fa-clock-rotate-left text-lg mb-1"></i>
-        <span>รายการ RTC</span>
+      <button onclick="switchTab('tab-add-stock')" id="nav-tab-add-stock" class="nav-btn flex-1 py-2 flex flex-col items-center text-xs text-slate-400 hover:text-slate-200">
+        <i class="fa-solid fa-box-archive text-lg mb-0.5"></i>
+        <span>เพิ่มสต็อก</span>
       </button>
     </div>
   </nav>
 
   <script>
-    // URL สำหรับเชื่อมต่อกับ Google Apps Script
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxqQuYRlBO42DDbDaQZ9ki-HDesid9NCHI7hpa1oXFKzxM_TzN5vi3zsjpeBRQxNIx89g/exec";
+    // ฝัง URL ตรงนี้เรียบร้อยแล้ว
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzl0wtf4vNv953jgWVX3gbI-tAYx0ONKKrapgnTRcwwRaMftTsor6eUKzmz_q67yUl8eA/exec';
+    let currentFetchedProduct = null;
 
-    let currentProduct = null;
+    window.onload = () => {
+      loadExpiryItems();
+    };
 
-    // ระบบสลับ หน้า (Tabs)
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.getElementById(tabId).classList.remove('hidden');
 
-      ['tab1', 'tab2', 'tab3'].forEach(id => {
-        const btn = document.getElementById('nav-' + id);
-        if (id === tabId) {
-          btn.className = "flex flex-col items-center text-indigo-600 font-medium text-xs";
-        } else {
-          btn.className = "flex flex-col items-center text-slate-400 font-medium text-xs";
-        }
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('text-indigo-400', 'font-semibold');
+        btn.classList.add('text-slate-400');
       });
 
-      if (tabId === 'tab3') loadExpiries();
+      const activeNav = document.getElementById('nav-' + tabId);
+      activeNav.classList.remove('text-slate-400');
+      activeNav.classList.add('text-indigo-400', 'font-semibold');
+
+      if (tabId === 'tab-view-exp') loadExpiryItems();
     }
 
-    // ระบบตรวจรหัสผ่าน Tab 1
-    function checkPassword() {
-      const pwd = document.getElementById('sysPassword').value;
-      if (pwd === '254903') {
-        document.getElementById('authBox').classList.add('hidden');
-        document.getElementById('stockForm').classList.remove('hidden');
-        Swal.fire({ icon: 'success', title: 'ปลดล็อคสำเร็จ', timer: 1000, showConfirmButton: false });
+    // Tab 1 Auth
+    function verifyPin() {
+      const pin = document.getElementById('pinInput').value;
+      if (pin === '254903') {
+        document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('addStockForm').classList.remove('hidden');
       } else {
-        Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ถูกต้อง', text: 'กรุณาลองใหม่อีกครั้ง' });
+        alert('รหัสผ่านไม่ถูกต้อง');
       }
     }
 
-    // บันทึกสินค้าเข้าสต็อก
-    async function saveProduct() {
-      const barcode = document.getElementById('addBarcode').value.trim();
-      const name = document.getElementById('addName').value.trim();
-      const price = document.getElementById('addPrice').value;
+    // Save Stock
+    async function saveStock() {
+      const barcode = String(document.getElementById('stockBarcode').value).trim();
+      const name = document.getElementById('stockName').value.trim();
+      const price = document.getElementById('stockPrice').value.trim();
 
-      if (!barcode || !name || !price) {
-        Swal.fire('กรอกข้อมูลไม่ครบ', 'กรุณากรอกข้อมูลให้ครบทุกช่อง', 'warning');
-        return;
-      }
+      if (!barcode || !name || !price) return alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
 
-      Swal.showLoading();
       try {
-        const res = await fetch(WEB_APP_URL, {
+        const res = await fetch(API_URL, {
           method: 'POST',
-          body: JSON.stringify({ action: 'addProduct', barcode, name, price })
-        }).then(r => r.json());
-
-        if (res.status === 'success') {
-          Swal.fire('สำเร็จ', 'บันทึกสินค้าเรียบร้อยแล้ว', 'success');
-          document.getElementById('addBarcode').value = '';
-          document.getElementById('addName').value = '';
-          document.getElementById('addPrice').value = '';
+          body: JSON.stringify({ action: 'addStock', barcode, name, price })
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert('บันทึกเข้าสต็อกเรียบร้อยแล้ว');
+          document.getElementById('stockBarcode').value = '';
+          document.getElementById('stockName').value = '';
+          document.getElementById('stockPrice').value = '';
         }
       } catch (err) {
-        Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อระบบได้', 'error');
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
       }
     }
 
-    // ดึงข้อมูลสินค้าตามบาร์โค้ด
-    async function fetchProduct() {
-      const barcode = document.getElementById('searchBarcode').value.trim();
-      if (!barcode) return;
+    // Fetch Product for Expiry Tab
+    async function fetchProductInfo() {
+      const barcode = String(document.getElementById('expBarcode').value).trim();
+      if (!barcode) return alert('กรุณากรอกรหัสบาร์โค้ด');
 
-      Swal.showLoading();
       try {
-        const res = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'getProduct', barcode })
-        }).then(r => r.json());
-
-        Swal.close();
-
-        if (res.status === 'success') {
-          currentProduct = res.data;
-          document.getElementById('fetchedName').innerText = currentProduct.name;
-          document.getElementById('fetchedPrice').innerText = currentProduct.price + ' บาท';
-          document.getElementById('productDetail').classList.remove('hidden');
-        } else {
-          currentProduct = null;
-          document.getElementById('productDetail').classList.add('hidden');
-          Swal.fire('ไม่พบสินค้า', res.message, 'error');
+        const res = await fetch(`${API_URL}?action=getProducts`);
+        const result = await res.json();
+        
+        if (result.success) {
+          const product = result.data.find(p => String(p.barcode) === barcode);
+          if (product) {
+            currentFetchedProduct = product;
+            document.getElementById('previewName').innerText = product.name;
+            document.getElementById('previewPrice').innerText = `ราคา/รายละเอียด: ${product.price}`;
+            document.getElementById('productPreview').classList.remove('hidden');
+          } else {
+            alert('ไม่พบข้อมูลสินค้านี้ในสต็อก (กรุณาเพิ่มสินค้าในระบบสต็อกก่อน)');
+            document.getElementById('productPreview').classList.add('hidden');
+          }
         }
       } catch (err) {
-        Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
+        alert('ดึงข้อมูลไม่สำเร็จ: ' + err.message);
       }
     }
 
-    // คำนวณวันหมดอายุ & สถานะ RTC
-    function calculateRTC() {
-      const expDateVal = document.getElementById('expDateInput').value;
-      if (!expDateVal || !currentProduct) return;
-
-      const expDate = new Date(expDateVal);
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      expDate.setHours(0,0,0,0);
-
-      const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
-      const preview = document.getElementById('rtcPreview');
-      const btn = document.getElementById('btnSaveExpiry');
-
-      preview.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-amber-100', 'text-amber-700', 'bg-emerald-100', 'text-emerald-700');
-
-      let status = '';
-      if (diffDays <= 15) {
-        status = 'ติด RTC 50%';
-        preview.classList.add('bg-red-100', 'text-red-700');
-      } else if (diffDays <= 30) {
-        status = 'ติด RTC 30%';
-        preview.classList.add('bg-amber-100', 'text-amber-700');
-      } else {
-        status = 'สถานะปกติ';
-        preview.classList.add('bg-emerald-100', 'text-emerald-700');
-      }
-
-      preview.innerText = `เหลือเวลาอีก ${diffDays} วัน -> ${status}`;
-      btn.disabled = false;
-      btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-
-    // บันทึกวันหมดอายุ
+    // Save Expiry
     async function saveExpiry() {
-      const expDate = document.getElementById('expDateInput').value;
-      const rtcStatus = document.getElementById('rtcPreview').innerText.split('-> ')[1] || 'ปกติ';
+      const barcode = String(document.getElementById('expBarcode').value).trim();
+      const expiryDate = document.getElementById('expDateInput').value;
 
-      Swal.showLoading();
+      if (!barcode || !expiryDate) return alert('กรุณากรอกบาร์โค้ดและเลือกวันหมดอายุ');
+      if (!currentFetchedProduct) return alert('กรุณากดปุ่ม "ดึงข้อมูล" ก่อนบันทึก');
+
       try {
-        const res = await fetch(WEB_APP_URL, {
+        const res = await fetch(API_URL, {
           method: 'POST',
           body: JSON.stringify({
             action: 'addExpiry',
-            barcode: currentProduct.barcode,
-            name: currentProduct.name,
-            price: currentProduct.price,
-            expDate,
-            rtcStatus
+            barcode: barcode,
+            name: currentFetchedProduct.name,
+            price: currentFetchedProduct.price,
+            expiryDate: expiryDate
           })
-        }).then(r => r.json());
-
-        if (res.status === 'success') {
-          Swal.fire('สำเร็จ', 'บันทึกวันหมดอายุเรียบร้อยแล้ว', 'success');
-          document.getElementById('searchBarcode').value = '';
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert('บันทึกวันหมดอายุเรียบร้อยแล้ว');
+          document.getElementById('expBarcode').value = '';
           document.getElementById('expDateInput').value = '';
-          document.getElementById('productDetail').classList.add('hidden');
-          document.getElementById('rtcPreview').classList.add('hidden');
+          document.getElementById('productPreview').classList.add('hidden');
+          currentFetchedProduct = null;
         }
       } catch (err) {
-        Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+        alert('บันทึกไม่สำเร็จ: ' + err.message);
       }
     }
 
-    // ดึงข้อมูลรายการทั้งหมดมาแสดง
-    async function loadExpiries() {
+    // Load Expiry List
+    async function loadExpiryItems() {
       const container = document.getElementById('expiryList');
-      container.innerHTML = '<p class="text-center text-slate-400 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดข้อมูล...</p>';
+      container.innerHTML = '<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังโหลดรายการ...</div>';
 
       try {
-        const res = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'getExpiries' })
-        }).then(r => r.json());
+        const res = await fetch(`${API_URL}?action=getExpiryItems`);
+        const result = await res.json();
 
-        if (res.status === 'success' && res.data.length > 0) {
-          container.innerHTML = '';
-          res.data.reverse().forEach(item => {
-            let badgeClass = 'bg-slate-100 text-slate-600';
-            if (item.daysLeft <= 15) badgeClass = 'bg-red-500 text-white';
-            else if (item.daysLeft <= 30) badgeClass = 'bg-amber-500 text-white';
-
-            container.innerHTML += `
-              <div class="border rounded-xl p-3 flex justify-between items-center shadow-sm">
-                <div>
-                  <p class="font-bold text-slate-800">${item.name} (${item.price}฿)</p>
-                  <p class="text-xs text-slate-400">รหัส: ${item.barcode} | หมดอายุ: ${item.expDate.split('T')[0]}</p>
+        if (result.success && result.data.length > 0) {
+          container.innerHTML = result.data.map(item => `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/80 flex justify-between items-center hover:border-slate-600 transition">
+              <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                  <span class="font-mono text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">#${item.barcode}</span>
+                  <span class="font-bold text-white text-base">${item.name}</span>
                 </div>
-                <div class="text-right">
-                  <span class="text-xs px-2.5 py-1 rounded-full font-bold ${badgeClass}">${item.rtcStatus}</span>
-                  <p class="text-xs text-slate-500 mt-1">อีก ${item.daysLeft} วัน</p>
+                <div class="text-xs text-slate-400">
+                  <span>ราคา: ${item.price}</span> | <span>หมดอายุ: ${item.expiryDate}</span>
                 </div>
               </div>
-            `;
-          });
+              <div class="text-right">
+                <span class="inline-block px-3 py-1 rounded-full text-xs mb-1 ${item.badgeClass}">${item.status}</span>
+                <div class="text-xs font-semibold ${item.daysLeft <= 15 ? 'text-rose-400' : 'text-slate-300'}">
+                  ${item.daysLeft <= 0 ? 'หมดอายุแล้ว' : `เหลืออีก ${item.daysLeft} วัน`}
+                </div>
+              </div>
+            </div>
+          `).join('');
         } else {
-          container.innerHTML = '<p class="text-center text-slate-400 py-4">ยังไม่มีรายการบันทึกวันหมดอายุ</p>';
+          container.innerHTML = '<div class="text-center py-8 text-slate-500">ไม่มีรายการสินค้า RTC ในขณะนี้</div>';
         }
       } catch (err) {
-        container.innerHTML = '<p class="text-center text-red-400 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+        container.innerHTML = '<div class="text-center py-8 text-rose-400">เกิดข้อผิดพลาดในการดึงข้อมูล</div>';
       }
     }
   </script>
