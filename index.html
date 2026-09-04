@@ -77,16 +77,16 @@
     </div>
 
     <div class="card">
-      <div class="card-title">🔍 สแกนบาร์โค้ดและใส่วันหมดอายุ</div>
+      <div class="card-title">🔍 พิมพ์/สแกนบาร์โค้ดและใส่วันหมดอายุ</div>
       <form id="expForm">
         <div class="form-grid">
           <div class="form-group">
-            <label for="sku">ยิงบาร์โค้ด (SKU)</label>
-            <input type="text" id="sku" class="barcode-highlight" placeholder="สแกนบาร์โค้ดที่นี่..." autofocus required>
+            <label for="sku">พิมพ์/ยิงบาร์โค้ด (SKU)</label>
+            <input type="text" id="sku" class="barcode-highlight" placeholder="พิมพ์หรือยิงบาร์โค้ด..." autofocus required>
           </div>
           <div class="form-group" style="grid-column: span 2;">
-            <label for="productName">ชื่อสินค้า (ดึงให้อัตโนมัติ)</label>
-            <input type="text" id="productName" placeholder="รอการยิงบาร์โค้ด..." readonly required>
+            <label for="productName">ชื่อสินค้า (ดึงจาก MasterStock)</label>
+            <input type="text" id="productName" placeholder="รอการพิมพ์/ยิงบาร์โค้ด..." readonly required>
           </div>
           <div class="form-group">
             <label for="lotNumber">เลขล็อต (Lot No.)</label>
@@ -133,41 +133,54 @@
   </div>
 
   <script>
-    // URL Web App จาก Google Apps Script ของคุณ
     const API_URL = "https://script.google.com/macros/s/AKfycbykCCkWDk4i61uDJEuY9uYxobsvA16xlf8bnGdZGp47zRXGj1uYsNw2cgCZDM_5pj-P/exec";
 
     const skuInput = document.getElementById("sku");
     const nameInput = document.getElementById("productName");
+    let lastSearchedSku = "";
 
-    // เมื่อยิงบาร์โค้ดแล้ว ดึงชื่อสินค้าอัตโนมัติจาก MasterStock
-    skuInput.addEventListener("change", function() {
-      const sku = this.value.trim();
-      if (!sku) return;
+    // ฟังก์ชันค้นหาชื่อสินค้าจากแท็บ MasterStock
+    function fetchProductName() {
+      const sku = skuInput.value.trim();
+      if (!sku || sku === lastSearchedSku) return;
 
-      nameInput.value = "กำลังค้นหาข้อมูลสินค้า...";
-      
-      fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "getProduct", sku: sku })
-      })
+      lastSearchedSku = sku;
+      nameInput.value = "กำลังค้นหาข้อมูลใน MasterStock...";
+      nameInput.classList.remove("product-found");
+
+      fetch(`${API_URL}?action=getProduct&sku=${encodeURIComponent(sku)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.status === "success") {
+        if (data.status === "success" && data.productName) {
           nameInput.value = data.productName;
           nameInput.classList.add("product-found");
-          document.getElementById("lotNumber").focus();
+          nameInput.readOnly = true;
+          document.getElementById("lotNumber").focus(); // ย้ายไปช่องเลขล็อตอัตโนมัติ
         } else {
           nameInput.value = "";
           nameInput.classList.remove("product-found");
-          alert("❌ ไม่พบสินค้า SKU นี้ใน MasterStock! กรุณากรอกชื่อสินค้าเอง หรือเพิ่มรายการในชีต MasterStock");
+          alert("❌ ไม่พบสินค้า SKU: " + sku + " ในแท็บ MasterStock!\nกรุณากรอกชื่อสินค้าเอง หรือเพิ่มรหัสนี้ในชีต MasterStock");
           nameInput.readOnly = false;
           nameInput.focus();
         }
       })
       .catch(err => {
         nameInput.value = "";
-        alert("เกิดข้อผิดพลาดในการดึงข้อมูล: " + err);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อ: " + err);
       });
+    }
+
+    // ดึงข้อมูลเมื่อกด Enter ในช่องบาร์โค้ด
+    skuInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault(); // ป้องกันฟอร์มกดส่งโดยไม่ตั้งใจ
+        fetchProductName();
+      }
+    });
+
+    // ดึงข้อมูลเมื่อพิมพ์เสร็จแล้วกดคลิกเปลี่ยนช่อง (Blur)
+    skuInput.addEventListener("blur", function() {
+      fetchProductName();
     });
 
     // บันทึกข้อมูลลงชีต RTC_Log
@@ -191,10 +204,11 @@
       })
       .then(res => res.json())
       .then(data => {
-        alert("✅ บันทึก RTC เรียบร้อยแล้ว!");
+        alert("✅ บันทึกรายการ RTC เรียบร้อยแล้ว!");
         document.getElementById("expForm").reset();
         nameInput.readOnly = true;
         nameInput.classList.remove("product-found");
+        lastSearchedSku = "";
         skuInput.focus();
         loadData();
       })
