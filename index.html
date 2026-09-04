@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจัดการวันหมดอายุ & ติดป้าย RTC</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
+    body { background-color: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
+    .container { max-width: 1100px; margin: auto; }
+    
+    .header { text-align: center; margin-bottom: 25px; }
+    .header h1 { margin: 0; color: #1a365d; font-size: 26px; }
+    .header p { color: #4a5568; font-size: 14px; margin-top: 5px; }
+    
+    /* Summary Dashboard */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .stat-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
+    .stat-card .num { font-size: 24px; font-weight: 600; margin-top: 5px; }
+    .stat-card.rtc30 { border-top: 4px solid #d69e2e; }
+    .stat-card.rtc30 .num { color: #b7791f; }
+    .stat-card.rtc50 { border-top: 4px solid #dd6b20; }
+    .stat-card.rtc50 .num { color: #c05621; }
+    .stat-card.expired { border-top: 4px solid #e53e3e; }
+    .stat-card.expired .num { color: #c53030; }
+    
+    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .card-title { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #2d3748; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
+    
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 13px; margin-bottom: 5px; color: #4a5568; font-weight: 500; }
+    .form-group input { padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; outline: none; }
+    .form-group input:focus { border-color: #3182ce; box-shadow: 0 0 0 3px rgba(49,130,206,0.2); }
+    
+    .btn { padding: 10px 20px; font-size: 14px; font-weight: 500; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+    .btn-primary { background-color: #38a169; width: 100%; margin-top: 15px; font-size: 16px; }
+    .btn-primary:hover { background-color: #2f855a; }
+    .btn-refresh { background-color: #3182ce; }
+    .btn-refresh:hover { background-color: #2b6cb0; }
+    
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
+    th { background-color: #f7fafc; color: #2d3748; font-weight: 600; }
+    
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+    .badge-normal { background-color: #c6f6d5; color: #22543d; }
+    .badge-rtc30 { background-color: #fefcbf; color: #744210; border: 1px solid #d69e2e; }
+    .badge-rtc50 { background-color: #feebc8; color: #7b341e; border: 1px solid #dd6b20; }
+    .badge-expired { background-color: #fed7d7; color: #742a2a; border: 1px solid #e53e3e; }
+    
+    .row-expired { background-color: #fff5f5; }
+    .row-rtc50 { background-color: #fffaf0; }
+    .row-rtc30 { background-color: #fffff0; }
+    
+    .search-box { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>📦 ระบบจัดการและติดตามวันหมดอายุสินค้า</h1>
+      <p>คำนวณการติดป้าย RTC 30% / 50% อัตโนมัติ</p>
+    </div>
+
+    <!-- แผงสรุปข้อมูล (Dashboard) -->
+    <div class="summary-grid">
+      <div class="stat-card rtc30">
+        <div>ต้องติดป้าย RTC 30%</div>
+        <div class="num" id="countRtc30">0 รายการ</div>
+      </div>
+      <div class="stat-card rtc50">
+        <div>ต้องติดป้าย RTC 50%</div>
+        <div class="num" id="countRtc50">0 รายการ</div>
+      </div>
+      <div class="stat-card expired">
+        <div>หมดอายุแล้ว (ตัดจ่าย)</div>
+        <div class="num" id="countExpired">0 รายการ</div>
+      </div>
+    </div>
+
+    <!-- ฟอร์มป้อนข้อมูล -->
+    <div class="card">
+      <div class="card-title">➕ บันทึกสินค้าใหม่เข้าคลัง</div>
+      <form id="expForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="sku">รหัสสินค้า (SKU/Barcode)</label>
+            <input type="text" id="sku" required placeholder="เช่น 8850011000123">
+          </div>
+          <div class="form-group">
+            <label for="productName">ชื่อสินค้า</label>
+            <input type="text" id="productName" required placeholder="เช่น นมสดรสจืด 1,000 ml">
+          </div>
+          <div class="form-group">
+            <label for="lotNumber">เลขล็อต (Lot No.)</label>
+            <input type="text" id="lotNumber" required placeholder="เช่น L69-01">
+          </div>
+          <div class="form-group">
+            <label for="expDate">วันหมดอายุ (EXP Date)</label>
+            <input type="date" id="expDate" required>
+          </div>
+          <div class="form-group">
+            <label for="quantity">จำนวนสินค้า</label>
+            <input type="number" id="quantity" min="1" required placeholder="10">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">บันทึกข้อมูลลงฐานข้อมูล</button>
+      </form>
+    </div>
+
+    <!-- ตารางรายการสินค้า -->
+    <div class="card">
+      <div class="card-title">📋 รายการสินค้าและการดำเนินการ</div>
+      <div style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <input type="text" id="searchInput" class="search-box" style="flex: 1; min-width: 200px;" placeholder="🔍 ค้นหารหัสสินค้า หรือ ชื่อสินค้า..." onkeyup="filterTable()">
+        <button onclick="loadData()" class="btn btn-refresh" style="height: 42px;">🔄 ดึงข้อมูลล่าสุด</button>
+      </div>
+      
+      <div class="table-container">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>ชื่อสินค้า</th>
+              <th>เลขล็อต</th>
+              <th>วันหมดอายุ</th>
+              <th>จำนวน</th>
+              <th>สถานะการดำเนินการ (Target)</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="6" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // URL Web App จาก Google Apps Script
+    const API_URL = "https://script.google.com/macros/s/AKfycbykCCkWDk4i61uDJEuY9uYxobsvA16xlf8bnGdZGp47zRXGj1uYsNw2cgCZDM_5pj-P/exec";
+
+    // ฟังก์ชันบันทึกข้อมูล
+    document.getElementById("expForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const btn = document.getElementById("submitBtn");
+      btn.innerText = "กำลังบันทึกข้อมูล...";
+      btn.disabled = true;
+
+      const payload = {
+        sku: document.getElementById("sku").value.trim(),
+        productName: document.getElementById("productName").value.trim(),
+        lotNumber: document.getElementById("lotNumber").value.trim(),
+        expDate: document.getElementById("expDate").value,
+        quantity: document.getElementById("quantity").value
+      };
+
+      fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("บันทึกข้อมูลเรียบร้อยแล้ว!");
+        document.getElementById("expForm").reset();
+        loadData();
+      })
+      .catch(err => alert("เกิดข้อผิดพลาดในการบันทึก: " + err))
+      .finally(() => {
+        btn.innerText = "บันทึกข้อมูลลงฐานข้อมูล";
+        btn.disabled = false;
+      });
+    });
+
+    // ฟังก์ชันดึงและประมวลผลข้อมูล
+    function loadData() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">กำลังโหลดข้อมูล...</td></tr>';
+
+      fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        tbody.innerHTML = "";
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลสินค้าในระบบ</td></tr>';
+          updateCounters(0, 0, 0);
+          return;
+        }
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        let count30 = 0;
+        let count50 = 0;
+        let countExp = 0;
+
+        data.forEach(item => {
+          if (!item.SKU) return;
+          
+          const exp = new Date(item.ExpDate);
+          exp.setHours(0,0,0,0);
+          
+          const diffTime = exp - today;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          let statusBadge = "";
+          let rowClass = "";
+
+          if (diffDays < 0) {
+            statusBadge = `<span class="badge badge-expired">❌ หมดอายุแล้ว (${Math.abs(diffDays)} วัน)</span>`;
+            rowClass = "row-expired";
+            countExp++;
+          } else if (diffDays <= 15) {
+            statusBadge = `<span class="badge badge-rtc50">🏷️ ติดป้ายลด 50% (เหลือ ${diffDays} วัน)</span>`;
+            rowClass = "row-rtc50";
+            count50++;
+          } else if (diffDays <= 30) {
+            statusBadge = `<span class="badge badge-rtc30">🏷️ ติดป้ายลด 30% (เหลือ ${diffDays} วัน)</span>`;
+            rowClass = "row-rtc30";
+            count30++;
+          } else {
+            statusBadge = `<span class="badge badge-normal">✅ ปกติ (เหลือ ${diffDays} วัน)</span>`;
+          }
+
+          const tr = document.createElement("tr");
+          tr.className = rowClass;
+          tr.innerHTML = `
+            <td><b>${item.SKU}</b></td>
+            <td>${item.ProductName}</td>
+            <td>${item.LotNumber}</td>
+            <td>${item.ExpDate}</td>
+            <td>${item.Quantity}</td>
+            <td>${statusBadge}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        updateCounters(count30, count50, countExp);
+      })
+      .catch(err => {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+      });
+    }
+
+    function updateCounters(c30, c50, cExp) {
+      document.getElementById("countRtc30").innerText = c30 + " รายการ";
+      document.getElementById("countRtc50").innerText = c50 + " รายการ";
+      document.getElementById("countExpired").innerText = cExp + " รายการ";
+    }
+
+    function filterTable() {
+      const input = document.getElementById("searchInput").value.toLowerCase();
+      const rows = document.querySelectorAll("#tableBody tr");
+      
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(input) ? "" : "none";
+      });
+    }
+
+    window.onload = loadData;
+  </script>
+</body>
+</html>
